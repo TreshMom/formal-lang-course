@@ -8,8 +8,8 @@ path = download("generations")
 bzip = cfpq_data.graph_from_csv(path)
 
 def get_graph_info(graph: Any) -> Tuple[int, int, Set[str]]:
-    countNode = len(graph.nodes)
-    countEdges = len(graph.edges)
+    countNode = graph.number_of_nodes()
+    countEdges = graph.number_of_edges()
     countLabels = set()
     for edge in graph.edges:
         countLabels.add(edge.attr['label'])
