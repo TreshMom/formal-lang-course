@@ -4,17 +4,15 @@ from typing import Tuple, Set
 
 
 def graph_info(name_graph: str) -> Tuple[int, int, Set[str]]:
-    graph_path = cfpq_data.download(name_graph)
-    graph = cfpq_data.graph_from_csv(graph_path)
     labels = set()
-    for _, _, data in graph.edges(data=True):
+    for _, _, data in name_graph.edges(data=True):
         if 'label' in data:
             labels.add(data['label'])
 
 
     return (
-        graph.number_of_nodes(),
-        graph.number_of_edges(),
+        name_graph.number_of_nodes(),
+        name_graph.number_of_edges(),
         labels
     )
 
@@ -30,3 +28,5 @@ def create_labeled_two_cycle_graph(
         ),
         path=path,
     )
+
+create_labeled_two_cycle_graph(3,4,("a","b"),'1')
