@@ -23,20 +23,19 @@ jobs:
       matrix:
 
         # Each option you define in the matrix has a key and value
-        python-version: [ 3.12 ]
+        python-version: [ 3.8 ]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Set up Git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
       # Setup Python with version from matrix
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
 
       # Install requirements
       - name: Install requirements
@@ -46,3 +45,13 @@ jobs:
           python -m pip install --upgrade pip wheel setuptools
           python -m pip install -r requirements.txt
           python -m pip list
+
+      # Install pre-commit from .pre-commit-config.yaml
+      - name: Install pre-commit
+        run: |
+          pre-commit install
+
+      # Run pre-commit on all the files in the repo
+      - name: Run pre-commit
+        run: |
+          pre-commit run --all-files --color always --verbose --show-diff-on-failure
