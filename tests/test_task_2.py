@@ -6,14 +6,16 @@ from project import regex_to_min_dfa, create_nfa
 import random
 import itertools
 
+
 @pytest.fixture
 def sample_graph():
     graph = MultiDiGraph()
-    graph.add_edge(0, 1, label='a')
-    graph.add_edge(1, 2, label='b')
-    graph.add_edge(2, 3, label='c')
-    graph.add_edge(3, 4, label='d')
+    graph.add_edge(0, 1, label="a")
+    graph.add_edge(1, 2, label="b")
+    graph.add_edge(2, 3, label="c")
+    graph.add_edge(3, 4, label="d")
     return graph
+
 
 REGEX_TO_TEST = [
     "(aa)*",
@@ -31,6 +33,7 @@ REGEX_TO_TEST = [
     "a*(a | b)*",
     "(a | c)*(a | b)*",
 ]
+
 
 class TestRegexToDfa:
     @pytest.mark.parametrize("regex_str", REGEX_TO_TEST, ids=lambda regex: regex)
@@ -54,6 +57,7 @@ class TestRegexToDfa:
         assert dfa.is_deterministic()
         assert dfa.is_equivalent_to(minimized_dfa)
         assert dfa.accepts(word)
+
 
 def test_create_nfa(sample_graph):
     start_states = {0}

@@ -9,11 +9,9 @@ def regex_to_min_dfa(regex: str) -> DeterministicFiniteAutomaton:
 
 
 def create_nfa(
-    graph: MultiDiGraph, 
-    start_states: Set[int] = None,
-    final_states: Set[int] = None
+    graph: MultiDiGraph, start_states: Set[int] = None, final_states: Set[int] = None
 ) -> NondeterministicFiniteAutomaton:
-    
+
     nfa = NondeterministicFiniteAutomaton()
 
     for edge in graph.edges(data=True):
