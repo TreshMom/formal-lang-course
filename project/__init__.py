@@ -8,5 +8,5 @@ __all__ = [
     "regex_to_dfa",
     "graph_to_nfa",
     "intersect_automata",
-    "FiniteAutomaton"
+    "FiniteAutomaton",
 ]

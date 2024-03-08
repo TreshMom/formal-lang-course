@@ -1,103 +1,113 @@
-from ast import Dict, Set, Tuple
+from networkx import MultiDiGraph
+import scipy as sp
 from typing import Iterable
-import networkx as nx
-from pyformlang.finite_automaton import (
-    DeterministicFiniteAutomaton,
-    NondeterministicFiniteAutomaton,
-    Symbol,
-)
+from pyformlang.finite_automaton import *
+from project.task2 import graph_to_nfa, regex_to_dfa
 
 
 class FiniteAutomaton:
-    def __init__(self, states: Set[int], alphabet: Set[str], transitions: Dict[Tuple[int, str], Set[int]], 
-                 start_states: Set[int], final_states: Set[int]):
-        self.states = states
-        self.alphabet = alphabet
-        self.transitions = transitions
+    def __init__(
+        self,
+        fa: NondeterministicFiniteAutomaton = None,
+        *,
+        matrix=None,
+        start_states=None,
+        final_states=None,
+        state_to_int=None
+    ) -> None:
+        self.matrix = matrix
         self.start_states = start_states
         self.final_states = final_states
-
-    @classmethod
-    def from_dfa(cls, dfa: DeterministicFiniteAutomaton):
-        adjacency_matrix = nx.DiGraph()
-        for state in dfa.states:
-            adjacency_matrix.add_node(state)
-        for state_from, transitions in dfa.to_dict().items():
-            for symbol, state_to in transitions.items():
-                adjacency_matrix.add_edge(state_from, state_to, label=symbol.value)
-        start_states = dfa.start_states
-        final_states = dfa.final_states
-        return cls(adjacency_matrix, start_states, final_states)
-
-    @classmethod
-    def from_nfa(cls, nfa: NondeterministicFiniteAutomaton):
-        adjacency_matrix = nx.DiGraph()
-        for state in nfa.states:
-            adjacency_matrix.add_node(state)
-        for state_from, transitions in nfa.to_dict().items():
-            for symbol, states_to in transitions.items():
-                for state_to in states_to:
-                    adjacency_matrix.add_edge(state_from, state_to, label=symbol.value)
-        start_states = nfa.start_states
-        final_states = nfa.final_states
-        return cls(adjacency_matrix, start_states, final_states)
+        self.state_to_int = state_to_int
+        if fa is not None:
+            self.state_to_int = {v: i for i, v in enumerate(fa.states)}
+            self.matrix = to_matrix(fa, self.state_to_int)
+            self.start_states = fa.start_states
+            self.final_states = fa.final_states
 
     def accepts(self, word: Iterable[Symbol]) -> bool:
-        current_states = self.start_states
-        for symbol in word:
-            next_states = set()
-            for state in current_states:
-                next_states.update(
-                    successor
-                    for successor in self.adjacency_matrix.successors(state)
-                    if self.adjacency_matrix[state][successor]["label"] == symbol.value
-                )
-            current_states = next_states
-            if not current_states:
-                return False
-        return any(state in self.final_states for state in current_states)
+        return self.to_nfa().accepts(word)
 
     def is_empty(self) -> bool:
-        visited = set()
-        stack = list(self.start_states)
-        while stack:
-            state = stack.pop()
-            if state in self.final_states:
-                return False
-            visited.add(state)
-            stack.extend(
-                successor
-                for successor in self.adjacency_matrix.successors(state)
-                if successor not in visited
-            )
-        return True
+        return self.to_nfa().is_empty()
 
-    def __str__(self):
-        return "FiniteAutomaton(start={}, final={})".format(
-            self.start_states, self.final_states
+    def to_nfa(self) -> NondeterministicFiniteAutomaton:
+        nfa = NondeterministicFiniteAutomaton()
+
+        for symbol, matrix in self.matrix.items():
+            for u, v in zip(*matrix.nonzero()):
+                nfa.add_transition(
+                    State(self.state_to_int[State(u)]),
+                    symbol,
+                    State(self.state_to_int[State(v)]),
+                )
+
+        for state in self.start_states:
+            nfa.add_start_state(State(self.state_to_int[State(state)]))
+        for state in self.final_states:
+            nfa.add_final_state(State(self.state_to_int[State(state)]))
+
+        return nfa
+
+
+def to_matrix(
+    fa: NondeterministicFiniteAutomaton, state_to_int=None
+) -> dict[Symbol, sp.sparse.dok_matrix]:
+    result = {}
+
+    for symbol in fa.symbols:
+        result[symbol] = sp.sparse.dok_matrix(
+            (len(fa.states), len(fa.states)), dtype=bool
+        )
+        for v, edges in fa.to_dict().items():
+            if symbol in edges:
+                u = edges[symbol]
+                result[symbol][state_to_int[v], state_to_int[u]] = True
+
+    return result
+
+
+def intersect_automata(
+    atomaton1: FiniteAutomaton, atomaton2: FiniteAutomaton
+) -> FiniteAutomaton:
+    matrix = {}
+    start_states = set()
+    final_states = set()
+    state_to_int = {}
+    symbols = set(atomaton1.matrix.keys()) & set(atomaton2.matrix.keys())
+
+    for symbol in symbols:
+        matrix[symbol] = sp.sparse.kron(
+            atomaton1.matrix[symbol], atomaton2.matrix[symbol], "csr"
         )
 
-def intersect_automata(automaton1: FiniteAutomaton, automaton2: FiniteAutomaton) -> FiniteAutomaton:
-    adjacency_matrix = nx.DiGraph()
-    for state1 in automaton1.adjacency_matrix.nodes:
-        for state2 in automaton2.adjacency_matrix.nodes:
-            adjacency_matrix.add_node((state1, state2))
-    for (state1, state2) in adjacency_matrix.nodes:
-        for symbol in automaton1.adjacency_matrix[state1]:
-            if symbol in automaton2.adjacency_matrix[state2]:
-                next_states1 = set(
-                    successor
-                    for successor in automaton1.adjacency_matrix[state1][symbol]
-                )
-                next_states2 = set(
-                    successor
-                    for successor in automaton2.adjacency_matrix[state2][symbol]
-                )
-                for next_state1 in next_states1:
-                    for next_state2 in next_states2:
-                        adjacency_matrix.add_edge(
-                            (state1, state2), (next_state1, next_state2), label=symbol
-                        )
-    start_states = {(state1, state2) for state1 in automaton1.start_states for state2 in automaton2.start_states}
-    final_states = {(state1, state2) for state1 in automaton1.final_states for state2 in automaton2.final_states}
-    return FiniteAutomaton(adjacency_matrix, start_states, final_states)
+    for u in atomaton1.state_to_int:
+        for v in atomaton2.state_to_int:
+            k = (
+                atomaton1.state_to_int[u] * len(atomaton2.state_to_int)
+                + atomaton2.state_to_int[v]
+            )
+            state_to_int[k] = k
+
+            if u in atomaton1.start_states and v in atomaton2.start_states:
+                start_states.add(State(k))
+
+            if u in atomaton1.final_states and v in atomaton2.final_states:
+                final_states.add(State(k))
+
+    return FiniteAutomaton(
+        matrix=matrix,
+        start_states=start_states,
+        final_states=final_states,
+        state_to_int=state_to_int,
+    )
+
+
+def paths_ends(
+    graph: MultiDiGraph, start_nodes: set[int], final_nodes: set[int], regex: str
+) -> list:
+    nfa = graph_to_nfa(graph)
+    dfa = regex_to_dfa(regex)
+    automaton = intersect_automata(nfa, dfa)
+    automaton_paths = automaton.to_nfa().get_paths(start_nodes, final_nodes)
+    return automaton_paths
