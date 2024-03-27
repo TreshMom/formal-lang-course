@@ -6,6 +6,7 @@ from project.task2 import graph_to_nfa, regex_to_dfa
 from typing import Dict
 from pyformlang.finite_automaton import Symbol, NondeterministicFiniteAutomaton
 
+
 class FiniteAutomaton:
     def __init__(
         self,
@@ -51,11 +52,15 @@ class FiniteAutomaton:
         return nfa
 
 
-def to_matrix(fa: NondeterministicFiniteAutomaton, state_to_int: Dict[int, int]) -> Dict[Symbol, sp.sparse.dok_matrix]:
+def to_matrix(
+    fa: NondeterministicFiniteAutomaton, state_to_int: Dict[int, int]
+) -> Dict[Symbol, sp.sparse.dok_matrix]:
     result = {}
 
     for symbol in fa.symbols:
-        result[symbol] = sp.sparse.dok_matrix((len(fa.states), len(fa.states)), dtype=bool)
+        result[symbol] = sp.sparse.dok_matrix(
+            (len(fa.states), len(fa.states)), dtype=bool
+        )
         for v, edges in fa.to_dict().items():
             if symbol in edges:
                 u = edges[symbol]
