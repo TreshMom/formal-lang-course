@@ -1,4 +1,4 @@
-from .task4 import reachability_with_constraints
+# from .task4 import reachability_with_constraints
 from .task3 import intersect_automata, FiniteAutomaton
 from .task2 import regex_to_dfa, graph_to_nfa
 from .task_1 import graph_info, create_labeled_two_cycle_graph
