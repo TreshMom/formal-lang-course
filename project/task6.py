@@ -96,4 +96,5 @@ def cfpq_with_hellings(
         if var == cfg.start_symbol
         and (start_nodes is None or start in start_nodes)
         and (final_nodes is None or finish in final_nodes)
+        and start != finish
     }

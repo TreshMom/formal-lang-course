@@ -1,136 +1,130 @@
-from pyformlang.finite_automaton import (
-    DeterministicFiniteAutomaton,
-    NondeterministicFiniteAutomaton,
-    State,
-)
-from scipy.sparse import dok_matrix, kron
-from networkx import MultiDiGraph
-from project.task2 import graph_to_nfa, regex_to_dfa
+from pyformlang.finite_automaton import *
+from scipy.sparse import *
+from networkx import *
+from typing import *
 
+from project.task2 import regex_to_dfa, graph_to_nfa
 
-def as_set(obj):
-    if not isinstance(obj, set):
-        return {obj}
-    return obj
+from itertools import product
 
 
 class FiniteAutomaton:
-    m = None
-    start = None
-    final = None
-    mapping = None
+    def __init__(self, nka=None):
+        if nka is None:
+            return
 
-    def __init__(self, obj, start=set(), final=set(), mapping=dict()):
-        if isinstance(
-            obj, (DeterministicFiniteAutomaton, NondeterministicFiniteAutomaton)
-        ):
-            matrix = nfa_to_matrix(obj)
-            self.m = matrix.m
-            self.start = matrix.start
-            self.final = matrix.final
-            self.mapping = matrix.mapping
-        else:
-            self.m = obj
-            self.start = start
-            self.final = final
-            self.mapping = mapping
+        map_index_to_state = {s: i for i, s in enumerate(nka.states)}
 
-    def map_for(self, u):
-        return self.mapping[State(u)]
+        self.map_index_to_state = list(nka.states)
 
-    def size(self):
-        return len(self.mapping)
+        self.start_states = {map_index_to_state[st] for st in nka.start_states}
+        self.final_states = {map_index_to_state[fi] for fi in nka.final_states}
 
-    def start_idx(self):
-        return [self.map_for(i) for i in self.start]
+        self.func_to_steps = {}
 
-    def final_idx(self):
-        return [self.map_for(i) for i in self.final]
+        states = nka.to_dict()
+        n = len(nka.states)
 
-    def labels(self):
-        return self.m.keys()
+        for symbols in nka.symbols:
+            self.func_to_steps[symbols] = dok_matrix((n, n), dtype=bool)
+            for key, value in states.items():
+                if symbols in value:
+                    for fi in (
+                        value[symbols]
+                        if isinstance(value[symbols], set)
+                        else {value[symbols]}
+                    ):
+                        self.func_to_steps[symbols][
+                            map_index_to_state[key], map_index_to_state[fi]
+                        ] = True
 
-    def accepts(self, word):
-        nfa = matrix_to_nfa(self)
-        real_word = "".join(list(word))
-        return nfa.accepts(real_word)
+    def accepts(self, word: Iterable[Symbol]) -> bool:
+        nka = NondeterministicFiniteAutomaton()
 
-    def is_empty(self):
-        return len(self.m) == 0 or len(next(self.m.values())) == 0
+        for key, value in self.func_to_steps.items():
+            nka.add_transitions(
+                [
+                    (start, key, end)
+                    for (start, end) in product(range(value.shape[0]), repeat=2)
+                    if self.func_to_steps[key][start, end]
+                ]
+            )
 
+        for start_state in self.start_states:
+            nka.add_start_state(start_state)
 
-def nfa_to_matrix(automaton: NondeterministicFiniteAutomaton) -> FiniteAutomaton:
-    states = automaton.to_dict()
-    states_num = len(automaton.states)
-    mapping = {v: i for i, v in enumerate(automaton.states)}
-    m = dict()
-    for label in automaton.symbols:
-        m[label] = dok_matrix((states_num, states_num), dtype=bool)
-        for u, edges in states.items():
-            if label in edges:
-                for v in as_set(edges[label]):
-                    m[label][mapping[u], mapping[v]] = True
-    return FiniteAutomaton(m, automaton.start_states, automaton.final_states, mapping)
+        for final_state in self.final_states:
+            nka.add_final_state(final_state)
 
+        return nka.accepts(word)
 
-def matrix_to_nfa(automaton: FiniteAutomaton) -> NondeterministicFiniteAutomaton:
-    nfa = NondeterministicFiniteAutomaton()
-    for label in automaton.m.keys():
-        size = automaton.m[label].shape[0]
-        for u in range(size):
-            for v in range(size):
-                if automaton.m[label][u, v]:
-                    nfa.add_transition(
-                        automaton.map_for(u), label, automaton.map_for(v)
-                    )
-    for s in automaton.start:
-        nfa.add_start_state(automaton.map_for(s))
-    for s in automaton.final:
-        nfa.add_final_state(automaton.map_for(s))
-    return nfa
+    def is_empty(self) -> bool:
+        if len(self.func_to_steps) == 0:
+            return True
 
+        dka = sum(self.func_to_steps.values())
 
-def transitive_closure(automaton: FiniteAutomaton):
-    if len(automaton.m.values()) == 0:
-        return dok_matrix((0, 0), dtype=bool)
-    adj = sum(automaton.m.values())
-    for i in range(adj.shape[0]):
-        adj += adj @ adj
-    return adj
+        for _ in range(dka.shape[0]):
+            dka += dka @ dka
+
+        for st, fi in product(self.start_states, self.final_states):
+            if dka[st, fi] != 0:
+                return False
+
+        return True
 
 
 def intersect_automata(
     automaton1: FiniteAutomaton, automaton2: FiniteAutomaton
 ) -> FiniteAutomaton:
-    labels = automaton1.m.keys() & automaton2.m.keys()
-    m = dict()
-    start = set()
-    final = set()
-    mapping = dict()
-    for label in labels:
-        m[label] = kron(automaton1.m[label], automaton2.m[label], "csr")
-    for u, i in automaton1.mapping.items():
-        for v, j in automaton2.mapping.items():
-            k = len(automaton2.mapping) * i + j
-            mapping[k] = k
-            if u in automaton1.start and v in automaton2.start:
-                start.add(State(k))
-            if u in automaton1.final and v in automaton2.final:
-                final.add(State(k))
-    return FiniteAutomaton(m, start, final, mapping)
+
+    commaon_keys = automaton1.func_to_steps.keys() & automaton2.func_to_steps.keys()
+    finatie_automaton = FiniteAutomaton()
+    finatie_automaton.func_to_steps = {}
+
+    for key in commaon_keys:
+        finatie_automaton.func_to_steps[key] = kron(
+            automaton1.func_to_steps[key], automaton2.func_to_steps[key], "csr"
+        )
+
+    finatie_automaton.start_states = set()
+    finatie_automaton.final_states = set()
+
+    n_states2 = automaton2.func_to_steps.values().__iter__().__next__().shape[0]
+
+    for m, k in product(automaton1.start_states, automaton2.start_states):
+        finatie_automaton.start_states.add(m * (n_states2) + k)
+
+    for m, k in product(automaton1.final_states, automaton2.final_states):
+        finatie_automaton.final_states.add(m * (n_states2) + k)
+
+    return finatie_automaton
 
 
 def paths_ends(
     graph: MultiDiGraph, start_nodes: set[int], final_nodes: set[int], regex: str
-) -> list[tuple[object, object]]:
-    nfa = nfa_to_matrix(graph_to_nfa(graph, start_nodes, final_nodes))
-    dfa = nfa_to_matrix(regex_to_dfa(regex))
-    intersec = intersect_automata(nfa, dfa)
-    clos = transitive_closure(intersec)
-    mapping = {v: i for i, v in nfa.mapping.items()}
-    size = len(dfa.mapping)
-    res = list()
-    for u, v in zip(*clos.nonzero()):
-        if u in intersec.start and v in intersec.final:
-            res.append((mapping[u // size], mapping[v // size]))
+) -> list[tuple[int, int]]:
+    fa1 = FiniteAutomaton(graph_to_nfa(graph, start_nodes, final_nodes))
+    fa2 = FiniteAutomaton(regex_to_dfa(regex))
+
+    finite_automaton = intersect_automata(fa1, fa2)
+
+    if len(finite_automaton.func_to_steps) == 0:
+        return []
+
+    m = sum(finite_automaton.func_to_steps.values())
+
+    for _ in range(m.shape[0]):
+        m += m @ m
+
+    n_states2 = fa2.func_to_steps.values().__iter__().__next__().shape[0]
+
+    def convert_to_node(i):
+        return fa1.map_index_to_state[i // n_states2].value
+
+    res = []
+    for st, fi in product(finite_automaton.start_states, finite_automaton.final_states):
+        if m[st, fi] != 0:
+            res.append((convert_to_node(st), convert_to_node(fi)))
+
     return res
