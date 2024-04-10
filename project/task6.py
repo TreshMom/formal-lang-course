@@ -24,7 +24,7 @@ def cfg_from_file(path: str) -> CFG:
 
 
 def _cfpq_with_hellings(
-        cfg: pyformlang.cfg.CFG, graph: nx.DiGraph
+    cfg: pyformlang.cfg.CFG, graph: nx.DiGraph
 ) -> Set[Tuple[int, pyformlang.cfg.Variable, int]]:
     cfg = cfg_to_weak_normal_form(cfg)
 
@@ -55,7 +55,7 @@ def _cfpq_with_hellings(
             finish_to_start_and_var_pairs[finish].add((start, var))
 
     edges_grouped_by_label: Dict[str, List[Tuple[int, int]]] = defaultdict(list)
-    for (start, finish, attributes) in graph.edges.data():
+    for start, finish, attributes in graph.edges.data():
         edges_grouped_by_label[attributes["label"]].append((start, finish))
 
     for production in cfg.productions:
@@ -64,36 +64,36 @@ def _cfpq_with_hellings(
                 for node in graph.nodes:
                     register_reachability(node, production.head, node)
             case [pyformlang.cfg.Terminal() as terminal]:
-                for (start, finish) in edges_grouped_by_label[terminal.value]:
+                for start, finish in edges_grouped_by_label[terminal.value]:
                     register_reachability(start, production.head, finish)
             case [pyformlang.cfg.Variable() as var1, pyformlang.cfg.Variable() as var2]:
                 var_production_body_to_head[(var1, var2)].add(production.head)
 
     while unhandled:
         (node1, var1, node2) = unhandled.popleft()
-        for (start, var, finish) in [
-                                        (node0, var, node2)
-                                        for (node0, var0) in finish_to_start_and_var_pairs[node1]
-                                        for var in var_production_body_to_head[(var0, var1)]
-                                    ] + [
-                                        (node1, var, node3)
-                                        for (var2, node3) in start_to_var_and_finish_pairs[node2]
-                                        for var in var_production_body_to_head[(var1, var2)]
-                                    ]:
+        for start, var, finish in [
+            (node0, var, node2)
+            for (node0, var0) in finish_to_start_and_var_pairs[node1]
+            for var in var_production_body_to_head[(var0, var1)]
+        ] + [
+            (node1, var, node3)
+            for (var2, node3) in start_to_var_and_finish_pairs[node2]
+            for var in var_production_body_to_head[(var1, var2)]
+        ]:
             register_reachability(start, var, finish)
     return result
 
 
 def cfpq_with_hellings(
-        cfg: pyformlang.cfg.CFG,
-        graph: nx.DiGraph,
-        start_nodes: Set[int] = None,
-        final_nodes: Set[int] = None,
+    cfg: pyformlang.cfg.CFG,
+    graph: nx.DiGraph,
+    start_nodes: Set[int] = None,
+    final_nodes: Set[int] = None,
 ) -> set[Tuple[int, int]]:
     return {
         (start, finish)
         for (start, var, finish) in _cfpq_with_hellings(cfg, graph)
         if var == cfg.start_symbol
-           and (start_nodes is None or start in start_nodes)
-           and (final_nodes is None or finish in final_nodes)
+        and (start_nodes is None or start in start_nodes)
+        and (final_nodes is None or finish in final_nodes)
     }

@@ -11,8 +11,8 @@ __all__ = [
     "regex_to_dfa",
     "graph_to_nfa",
     "intersect_automata",
-     "FiniteAutomaton",
+    "FiniteAutomaton",
     "reachability_with_constraints",
     "cfg_to_weak_normal_form",
-    "cfpq_with_hellings"
+    "cfpq_with_hellings",
 ]
