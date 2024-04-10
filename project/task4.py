@@ -1,32 +1,39 @@
-import numpy as np
-from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import breadth_first_order
+from scipy.sparse import *
 from project.task3 import FiniteAutomaton
 
 
 def reachability_with_constraints(
     fa: FiniteAutomaton, constraints_fa: FiniteAutomaton
 ) -> dict[int, set[int]]:
-    num_states = fa.num_states
-    transitions = fa.transitions
-    adjacency_matrix = np.zeros((num_states, num_states), dtype=bool)
-    for state, next_state in transitions:
-        adjacency_matrix[state, next_state] = True
+    m = constraints_fa.size()
+    n = fa.size()
 
-    csr_adjacency_matrix = csr_matrix(adjacency_matrix)
+    def diagonalise(mat):
+        res = dok_matrix(mat.shape, dtype=bool)
+        for i in range(mat.shape[0]):
+            for j in range(mat.shape[0]):
+                if mat[j, i]:
+                    res[i] += mat[j]
+        return res
 
-    reachable_states = {}
-
-    for start_state in range(num_states):
-        _, predecessors = breadth_first_order(
-            csr_adjacency_matrix, i_start=start_state, return_predecessors=True
-        )
-
-        reachable_set = set([start_state])
-
-        for pred_state, _ in enumerate(predecessors):
-            if pred_state != start_state and predecessors[pred_state] != -9999:
-                reachable_set.add(pred_state)
-        reachable_states[start_state] = reachable_set
-
-    return reachable_states
+    labels = fa.labels() & constraints_fa.labels()
+    res = {s: set() for s in fa.start}
+    adj = {
+        label: block_diag((constraints_fa.m[label], fa.m[label])) for label in labels
+    }
+    for v in fa.start_idx():
+        front = dok_matrix((m, m + n), dtype=bool)
+        for i in constraints_fa.start_idx():
+            front[i, i] = True
+        for i in range(m):
+            front[i, v + m] = True
+        for _ in range(m * n):
+            front = sum(
+                [dok_matrix((m, m + n), dtype=bool)]
+                + [diagonalise(front @ adj[label]) for label in labels]
+            )
+            for i in constraints_fa.final_idx():
+                for j in fa.final_idx():
+                    if front[i, j + m]:
+                        res[v].add(j)
+    return res
