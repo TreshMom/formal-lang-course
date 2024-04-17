@@ -3,7 +3,9 @@ from scipy.sparse import dok_matrix, block_diag
 
 
 def reachability_with_constraints(
-    finite_automaton: FiniteAutomaton, constraints_automaton: FiniteAutomaton
+    finite_automaton: FiniteAutomaton,
+    constraints_automaton: FiniteAutomaton,
+    start_to_end_enable: bool = True,
 ) -> dict[int, set[int]]:
     matrices = {}
 
@@ -57,13 +59,14 @@ def reachability_with_constraints(
                         if (
                             j in finite_automaton.final_states
                             and frontier[i, j + constraints_height]
-                        ) and finite_automaton.map_index_to_state[
-                            start_state
-                        ] != finite_automaton.map_index_to_state[
-                            j
-                        ]:
-                            reachable_states[
-                                finite_automaton.map_index_to_state[start_state]
-                            ].add(finite_automaton.map_index_to_state[j])
+                        ):
+                            if (
+                                start_to_end_enable
+                                or finite_automaton.map_index_to_state[start_state]
+                                != finite_automaton.map_index_to_state[j]
+                            ):
+                                reachable_states[
+                                    finite_automaton.map_index_to_state[start_state]
+                                ].add(finite_automaton.map_index_to_state[j])
 
     return reachable_states
