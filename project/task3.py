@@ -1,110 +1,130 @@
-from networkx import MultiDiGraph
-import scipy as sp
-from typing import Iterable
 from pyformlang.finite_automaton import *
-from project.task2 import graph_to_nfa, regex_to_dfa
-from typing import Dict
-from pyformlang.finite_automaton import Symbol, NondeterministicFiniteAutomaton
+from scipy.sparse import *
+from networkx import *
+from typing import *
+
+from project.task2 import regex_to_dfa, graph_to_nfa
+
+from itertools import product
+
 
 class FiniteAutomaton:
-    def __init__(
-        self,
-        fa: NondeterministicFiniteAutomaton = None,
-        *,
-        matrix=None,
-        start_states=None,
-        final_states=None,
-        state_to_int=None
-    ) -> None:
-        self.matrix = matrix
-        self.start_states = start_states
-        self.final_states = final_states
-        self.state_to_int = state_to_int
-        if fa is not None:
-            self.state_to_int = {v: i for i, v in enumerate(fa.states)}
-            self.matrix = to_matrix(fa, self.state_to_int)
-            self.start_states = fa.start_states
-            self.final_states = fa.final_states
+    def __init__(self, nka=None):
+        if nka is None:
+            return
+
+        map_index_to_state = {s: i for i, s in enumerate(nka.states)}
+
+        self.map_index_to_state = list(nka.states)
+
+        self.start_states = {map_index_to_state[st] for st in nka.start_states}
+        self.final_states = {map_index_to_state[fi] for fi in nka.final_states}
+
+        self.func_to_steps = {}
+
+        states = nka.to_dict()
+        n = len(nka.states)
+
+        for symbols in nka.symbols:
+            self.func_to_steps[symbols] = dok_matrix((n, n), dtype=bool)
+            for key, value in states.items():
+                if symbols in value:
+                    for fi in (
+                        value[symbols]
+                        if isinstance(value[symbols], set)
+                        else {value[symbols]}
+                    ):
+                        self.func_to_steps[symbols][
+                            map_index_to_state[key], map_index_to_state[fi]
+                        ] = True
 
     def accepts(self, word: Iterable[Symbol]) -> bool:
-        return self.to_nfa().accepts(word)
+        nka = NondeterministicFiniteAutomaton()
+
+        for key, value in self.func_to_steps.items():
+            nka.add_transitions(
+                [
+                    (start, key, end)
+                    for (start, end) in product(range(value.shape[0]), repeat=2)
+                    if self.func_to_steps[key][start, end]
+                ]
+            )
+
+        for start_state in self.start_states:
+            nka.add_start_state(start_state)
+
+        for final_state in self.final_states:
+            nka.add_final_state(final_state)
+
+        return nka.accepts(word)
 
     def is_empty(self) -> bool:
-        return self.to_nfa().is_empty()
+        if len(self.func_to_steps) == 0:
+            return True
 
-    def to_nfa(self) -> NondeterministicFiniteAutomaton:
-        nfa = NondeterministicFiniteAutomaton()
+        dka = sum(self.func_to_steps.values())
 
-        for symbol, matrix in self.matrix.items():
-            for u, v in zip(*matrix.nonzero()):
-                nfa.add_transition(
-                    State(self.state_to_int[State(u)]),
-                    symbol,
-                    State(self.state_to_int[State(v)]),
-                )
+        for _ in range(dka.shape[0]):
+            dka += dka @ dka
 
-        for state in self.start_states:
-            nfa.add_start_state(State(self.state_to_int[State(state)]))
-        for state in self.final_states:
-            nfa.add_final_state(State(self.state_to_int[State(state)]))
+        for st, fi in product(self.start_states, self.final_states):
+            if dka[st, fi] != 0:
+                return False
 
-        return nfa
-
-
-def to_matrix(fa: NondeterministicFiniteAutomaton, state_to_int: Dict[int, int]) -> Dict[Symbol, sp.sparse.dok_matrix]:
-    result = {}
-
-    for symbol in fa.symbols:
-        result[symbol] = sp.sparse.dok_matrix((len(fa.states), len(fa.states)), dtype=bool)
-        for v, edges in fa.to_dict().items():
-            if symbol in edges:
-                u = edges[symbol]
-                result[symbol][state_to_int[v], state_to_int[u]] = True
-
-    return result
+        return True
 
 
 def intersect_automata(
-    atomaton1: FiniteAutomaton, atomaton2: FiniteAutomaton
+    automaton1: FiniteAutomaton, automaton2: FiniteAutomaton
 ) -> FiniteAutomaton:
-    matrix = {}
-    start_states = set()
-    final_states = set()
-    state_to_int = {}
-    symbols = set(atomaton1.matrix.keys()) & set(atomaton2.matrix.keys())
 
-    for symbol in symbols:
-        matrix[symbol] = sp.sparse.kron(
-            atomaton1.matrix[symbol], atomaton2.matrix[symbol], "csr"
+    commaon_keys = automaton1.func_to_steps.keys() & automaton2.func_to_steps.keys()
+    finatie_automaton = FiniteAutomaton()
+    finatie_automaton.func_to_steps = {}
+
+    for key in commaon_keys:
+        finatie_automaton.func_to_steps[key] = kron(
+            automaton1.func_to_steps[key], automaton2.func_to_steps[key], "csr"
         )
 
-    for u in atomaton1.state_to_int:
-        for v in atomaton2.state_to_int:
-            k = (
-                atomaton1.state_to_int[u] * len(atomaton2.state_to_int)
-                + atomaton2.state_to_int[v]
-            )
-            state_to_int[k] = k
+    finatie_automaton.start_states = set()
+    finatie_automaton.final_states = set()
 
-            if u in atomaton1.start_states and v in atomaton2.start_states:
-                start_states.add(State(k))
+    n_states2 = automaton2.func_to_steps.values().__iter__().__next__().shape[0]
 
-            if u in atomaton1.final_states and v in atomaton2.final_states:
-                final_states.add(State(k))
+    for m, k in product(automaton1.start_states, automaton2.start_states):
+        finatie_automaton.start_states.add(m * (n_states2) + k)
 
-    return FiniteAutomaton(
-        matrix=matrix,
-        start_states=start_states,
-        final_states=final_states,
-        state_to_int=state_to_int,
-    )
+    for m, k in product(automaton1.final_states, automaton2.final_states):
+        finatie_automaton.final_states.add(m * (n_states2) + k)
+
+    return finatie_automaton
 
 
 def paths_ends(
     graph: MultiDiGraph, start_nodes: set[int], final_nodes: set[int], regex: str
-) -> list:
-    nfa = graph_to_nfa(graph)
-    dfa = regex_to_dfa(regex)
-    automaton = intersect_automata(nfa, dfa)
-    automaton_paths = automaton.to_nfa().get_paths(start_nodes, final_nodes)
-    return automaton_paths
+) -> list[tuple[int, int]]:
+    fa1 = FiniteAutomaton(graph_to_nfa(graph, start_nodes, final_nodes))
+    fa2 = FiniteAutomaton(regex_to_dfa(regex))
+
+    finite_automaton = intersect_automata(fa1, fa2)
+
+    if len(finite_automaton.func_to_steps) == 0:
+        return []
+
+    m = sum(finite_automaton.func_to_steps.values())
+
+    for _ in range(m.shape[0]):
+        m += m @ m
+
+    n_states2 = fa2.func_to_steps.values().__iter__().__next__().shape[0]
+
+    def convert_to_node(i):
+        return fa1.map_index_to_state[i // n_states2].value
+
+    res = []
+    for st, fi in product(finite_automaton.start_states, finite_automaton.final_states):
+        if m[st, fi] != 0:
+            res.append((convert_to_node(st), convert_to_node(fi)))
+
+    return res
