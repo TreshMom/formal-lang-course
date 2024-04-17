@@ -77,7 +77,6 @@ class FiniteAutomaton:
 def intersect_automata(
     automaton1: FiniteAutomaton, automaton2: FiniteAutomaton
 ) -> FiniteAutomaton:
-
     commaon_keys = automaton1.func_to_steps.keys() & automaton2.func_to_steps.keys()
     finatie_automaton = FiniteAutomaton()
     finatie_automaton.func_to_steps = {}
@@ -99,6 +98,7 @@ def intersect_automata(
         finatie_automaton.final_states.add(m * (n_states2) + k)
 
     return finatie_automaton
+
 
 
 def paths_ends(
@@ -126,5 +126,6 @@ def paths_ends(
     for st, fi in product(finite_automaton.start_states, finite_automaton.final_states):
         if m[st, fi] != 0:
             res.append((convert_to_node(st), convert_to_node(fi)))
+
 
     return res
