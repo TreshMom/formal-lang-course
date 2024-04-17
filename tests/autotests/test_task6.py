@@ -126,7 +126,6 @@ class TestReachability:
             rpq: dict[int, set[int]] = reachability_with_constraints(
                 FiniteAutomaton(graph_to_nfa(graph, start_nodes, final_nodes)),
                 FiniteAutomaton(regex_to_dfa(regex_str)),
-                start_to_end_enable=False,
             )
             rpq_set = set()
             for node_from, nodes_to in rpq.items():
