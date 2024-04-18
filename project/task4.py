@@ -51,6 +51,8 @@ def reachability_with_constraints(
             last_nnz = hash(str(k))
 
     return result
+
+
 from project.task3 import FiniteAutomaton
 from scipy.sparse import dok_matrix, block_diag
 

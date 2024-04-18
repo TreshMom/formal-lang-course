@@ -79,6 +79,7 @@ def cfpq_with_hellings(
 
     return final_result
 
+
 from pyformlang.cfg import CFG
 from collections import defaultdict
 from collections import deque
