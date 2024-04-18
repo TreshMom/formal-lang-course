@@ -1,3 +1,4 @@
+from .task7 import cfpq_with_matrix
 from .task6 import cfg_to_weak_normal_form, cfpq_with_hellings
 from .task4 import reachability_with_constraints
 from .task3 import intersect_automata, FiniteAutomaton
@@ -15,4 +16,5 @@ __all__ = [
     "reachability_with_constraints",
     "cfg_to_weak_normal_form",
     "cfpq_with_hellings",
+    "cfpq_with_matrix",
 ]
