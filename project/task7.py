@@ -2,13 +2,7 @@ import networkx as nx
 import scipy.sparse
 from pyformlang.cfg import CFG, Variable, Epsilon
 
-
-def cfg_to_weak_normal_form(cfg: CFG) -> CFG:
-    clear_cfg = cfg.eliminate_unit_productions().remove_useless_symbols()
-    decomposed = clear_cfg._decompose_productions(
-        clear_cfg._get_productions_with_only_single_terminals()
-    )
-    return CFG(productions=set(decomposed), start_symbol=Variable("S"))
+from project.task6 import cfg_to_weak_normal_form
 
 
 def cfpq_with_matrix(
