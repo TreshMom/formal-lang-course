@@ -20,5 +20,5 @@ __all__ = [
     "cfpq_with_matrix",
     "cfpq_with_tensor",
     "cfg_to_rsm",
-    "ebnf_to_rsm",
+    "ebnf_to_rsm"
 ]
