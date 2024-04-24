@@ -1,3 +1,4 @@
+from .task8 import cfpq_with_tensor, cfg_to_rsm, ebnf_to_rsm
 from .task7 import cfpq_with_matrix
 from .task6 import cfg_to_weak_normal_form, cfpq_with_hellings
 from .task4 import reachability_with_constraints
@@ -17,4 +18,7 @@ __all__ = [
     "cfg_to_weak_normal_form",
     "cfpq_with_hellings",
     "cfpq_with_matrix",
+    "cfpq_with_tensor",
+    "cfg_to_rsm",
+    "ebnf_to_rsm",
 ]
