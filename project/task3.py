@@ -16,6 +16,7 @@ class FiniteAutomaton:
     start = None
     final = None
     mapping = None
+    states_count: int = None
 
     def __init__(self, automata, start=None, final=None, mapping=None):
         if mapping is None:
@@ -66,6 +67,13 @@ class FiniteAutomaton:
     def labels(self):
         return self.mapping.keys()
 
+    def indices(self):
+        res = dict()
+        for v, i in self.mapping.items():
+            res[i] = v
+
+        return res
+
 
 def nfa_to_matrix(automaton: NondeterministicFiniteAutomaton) -> FiniteAutomaton:
     states = automaton.to_dict()
@@ -85,7 +93,9 @@ def nfa_to_matrix(automaton: NondeterministicFiniteAutomaton) -> FiniteAutomaton
                 for v in as_set(edges[label]):
                     m[label][mapping[u], mapping[v]] = True
 
-    return FiniteAutomaton(m, automaton.start_states, automaton.final_states, mapping)
+    res = FiniteAutomaton(m, automaton.start_states, automaton.final_states, mapping)
+    res.states_count = len(automaton.states)
+    return res
 
 
 def matrix_to_nfa(automaton: FiniteAutomaton) -> NondeterministicFiniteAutomaton:
@@ -167,9 +177,9 @@ def make_transitive_closure(fa: FiniteAutomaton):
     for m in fa.m.values():
         f = m if f is None else f + m
 
-    p = 0
-    while f.count_nonzero() != p:
-        p = f.count_nonzero()
+    last_nnz = -1
+    while f.count_nonzero() != last_nnz:
+        last_nnz = f.count_nonzero()
         f += f @ f
 
     return f
