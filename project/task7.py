@@ -1,53 +1,65 @@
+import pyformlang
+from pyformlang.cfg import Terminal
+from scipy.sparse import dok_matrix
+
 import networkx as nx
-import scipy.sparse
-from pyformlang.cfg import CFG, Variable, Epsilon
+from typing import *
+
+import copy
 
 from project.task6 import cfg_to_weak_normal_form
 
 
 def cfpq_with_matrix(
-    cfg: CFG,
+    cfg: pyformlang.cfg.CFG,
     graph: nx.DiGraph,
-    start_nodes: set[int] = None,
-    final_nodes: set[int] = None,
+    start_nodes: Set[int] = None,
+    final_nodes: Set[int] = None,
 ) -> set[tuple[int, int]]:
 
-    cfg_weak = cfg_to_weak_normal_form(cfg)
-    nodes_len = len(graph.nodes)
-    pre_res = {
-        v: scipy.sparse.dok_matrix((nodes_len, nodes_len), dtype=bool)
-        for v in cfg_weak.variables
-    }
-    ni_to_nj_nk = set()
+    start_nodes = graph.nodes if start_nodes is None else start_nodes
+    final_nodes = graph.nodes if final_nodes is None else final_nodes
+    cfg = cfg_to_weak_normal_form(cfg)
 
-    for i, j, tag in graph.edges.data("label"):
-        for prod in cfg_weak.productions:
-            if (
-                len(prod.body) == 1
-                and isinstance(prod.body[0], Variable)
-                and prod.body[0].value == tag
-            ):
-                pre_res[prod.head][i, j] = True
-            elif len(prod.body) == 1 and isinstance(prod.body[0], Epsilon):
-                pre_res[prod.head] += scipy.sparse.csr_matrix(
-                    scipy.sparse.eye(nodes_len), dtype=bool
-                )
-            elif len(prod.body) == 2:
-                ni_to_nj_nk.add((prod.head, prod.body[0], prod.body[1]))
-
-    res_csrs = {x: scipy.sparse.csr_matrix(matrix) for x, matrix in pre_res.items()}
-
-    not_changed = False
-    while not not_changed:
-        not_changed = True
-        for ni, nj, nk in ni_to_nj_nk:
-            prev = res_csrs[ni].nnz
-            res_csrs[ni] += res_csrs[nj] @ res_csrs[nk]
-            if prev != res_csrs[ni].nnz:
-                not_changed = False
-
-    result = {
-        (i, j) for k, matrix in res_csrs.items() for i, j in zip(*matrix.nonzero())
+    M = {
+        p.head.to_text(): dok_matrix(
+            (graph.number_of_nodes(), graph.number_of_nodes()), dtype=bool
+        )
+        for p in cfg.productions
     }
 
-    return result
+    t_to_Ts = {}
+    for p in cfg.productions:
+        if len(p.body) == 1 and isinstance(p.body[0], Terminal):
+            t_to_Ts.setdefault(p.body[0].to_text(), set()).add(p.head.to_text())
+
+    for b, e, t in graph.edges(data="label"):
+        if t in t_to_Ts:
+            for T in t_to_Ts[t]:
+                M[T][b, e] = True
+
+    N_to_eps = {p.head.to_text() for p in cfg.productions if len(p.body) == 0}
+    for N in N_to_eps:
+        M[N].setdiag(True)
+
+    M_new = copy.deepcopy(M)
+    for m in M_new.values():
+        m.clear()
+
+    N_to_NN = {}
+    for p in cfg.productions:
+        if len(p.body) == 2:
+            N_to_NN.setdefault(p.head.to_text(), set()).add(
+                (p.body[0].to_text(), p.body[1].to_text())
+            )
+
+    for i in range(graph.number_of_nodes() ** 2):
+        for N, NN in N_to_NN.items():
+            for Nl, Nr in NN:
+                M_new[N] += M[Nl] @ M[Nr]
+        for N, m in M_new.items():
+            M[N] += m
+
+    S = cfg.start_symbol.to_text()
+    ns, ms = M[S].nonzero()
+    return {(n, m) for n, m in zip(ns, ms) if n in start_nodes and m in final_nodes}

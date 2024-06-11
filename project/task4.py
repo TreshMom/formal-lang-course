@@ -28,26 +28,28 @@ def reachability_with_constraints(
         return result
 
     labels = fa.labels() & constraints_fa.labels()
-    result = {s: set() for s in fa.start}
+    result = {s.value: set() for s in fa.states_list}
     adj = {
-        label: block_diag((constraints_fa.m[label], fa.m[label]), "csr")
+        label: block_diag((constraints_fa.matrix[label], fa.matrix[label]))
         for label in labels
     }
 
-    for v in fa.starts():
-        front = get_front(v)
-        last_nnz = -1
+    for state in fa.starts():
+        front = get_front(state)
+        if state in fa.final_states:
+            for i in constraints_fa.start_states:
+                if i in constraints_fa.final_states:
+                    result[fa.states_list[state]].add(fa.states_list[state])
+
         for _ in range(m * n):
-            front = sum(
-                [dok_matrix((m, m + n), dtype=bool)]
-                + [diagonalized(front @ adj[label]) for label in labels]
-            )
-            k = front[:, m:].nonzero()
-            for x, y in zip(k[0], k[1]):
-                if x in constraints_fa.ends() and y in fa.ends():
-                    result[v].add(y)
-            if hash(str(k)) == last_nnz:
-                break
-            last_nnz = hash(str(k))
+            new_front = dok_matrix((m, m + n), dtype=bool)
+            for l in labels:
+                new_front += diagonalized(front @ adj[l])
+            front = new_front
+            for i in range(m):
+                if i in constraints_fa.final_states and front[i, i]:
+                    for j in range(n):
+                        if j in fa.final_states and front[i, j + m]:
+                            result[fa.states_list[state]].add(fa.states_list[j])
 
     return result

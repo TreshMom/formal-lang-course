@@ -5,7 +5,7 @@ from typing import Tuple
 from pyformlang.cfg import CFG, Variable, Terminal, Epsilon
 
 
-def cfg_to_weak_normal_form(cfg: CFG) -> CFG:
+def cfg_to_weak_normal_form(cfg: pyformlang.cfg.CFG) -> pyformlang.cfg.CFG:
     clear_cfg = cfg.eliminate_unit_productions().remove_useless_symbols()
     decomposed = clear_cfg._decompose_productions(
         clear_cfg._get_productions_with_only_single_terminals()
@@ -14,7 +14,7 @@ def cfg_to_weak_normal_form(cfg: CFG) -> CFG:
 
 
 def cfpq_with_hellings(
-    cfg: CFG,
+    cfg: pyformlang.cfg.CFG,
     graph: nx.DiGraph,
     start_nodes: set[int] = None,
     final_nodes: set[int] = None,
@@ -32,35 +32,30 @@ def cfpq_with_hellings(
     cfg_threes = {}
 
     for p in cfg_weak.productions:
-        p_len = len(p.body)
-        if p_len == 1 and isinstance(p.body[0], Terminal):
+        if len(p.body) == 1 and isinstance(p.body[0], Terminal):
             cfg_ones.setdefault(p.head, set()).add(p.body[0])
-        elif p_len == 1 and isinstance(p.body[0], Epsilon):
+        elif len(p.body) == 0:  # Epsilon production
             cfg_twos.add(p.head)
-        elif p_len == 2:
+        elif len(p.body) == 2:
             cfg_threes.setdefault(p.head, set()).add((p.body[0], p.body[1]))
 
     result = {(n_ith, vert, vert) for n_ith in cfg_twos for vert in graph.nodes}
+
+    # Add terminal productions based on graph edges
+    add_to_result = set()
     for v, u, tag in graph.edges.data("label"):
         for n_ith in cfg_ones:
-            if tag in cfg_ones[n_ith]:
-                result.add((n_ith, v, u))
+            if Terminal(tag) in cfg_ones[n_ith]:
+                add_to_result.add((n_ith, v, u))
+    result |= add_to_result
+
     immediate = result.copy()
 
-    while len(immediate) > 0:
+    while immediate:
         n_ith, vi, ui = immediate.pop()
         add_to = set()
         for n_jth, vj, uj in result:
-            if vi == ui:
-                for n_kth in cfg_threes:
-                    if (n_jth, n_ith) in cfg_threes[n_kth] and (
-                        n_kth,
-                        vj,
-                        ui,
-                    ) not in result:
-                        immediate.add((n_kth, vj, ui))
-                        add_to.add((n_kth, vj, ui))
-            if ui == vi:
+            if ui == vj:
                 for n_kth in cfg_threes:
                     if (n_ith, n_jth) in cfg_threes[n_kth] and (
                         n_kth,
@@ -69,12 +64,20 @@ def cfpq_with_hellings(
                     ) not in result:
                         immediate.add((n_kth, vi, uj))
                         add_to.add((n_kth, vi, uj))
-        result.update(add_to)
+            if vi == uj:
+                for n_kth in cfg_threes:
+                    if (n_jth, n_ith) in cfg_threes[n_kth] and (
+                        n_kth,
+                        vj,
+                        ui,
+                    ) not in result:
+                        immediate.add((n_kth, vj, ui))
+                        add_to.add((n_kth, vj, ui))
+        result |= add_to
 
-    final_result = {
-        (v, u)
-        for n_ith, v, u in result
-        if v in start_nodes and u in final_nodes and n_ith == cfg.start_symbol.value
-    }
+    final_result = set()
+    for n_ith, v, u in result:
+        if v in start_nodes and u in final_nodes and n_ith == cfg.start_symbol:
+            final_result.add((v, u))
 
     return final_result
