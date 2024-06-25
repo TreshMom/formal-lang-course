@@ -1,5 +1,6 @@
+# from .task12 import typing_program, exec_program
 from .task9 import cfpq_with_gll
-from .task8 import cfpq_with_tensor, cfg_to_rsm, ebnf_to_rsm
+from .task8 import cfpq_with_tensor, cfg_to_rsm, ebnf_to_rsm, rsm_to_mat
 from .task7 import cfpq_with_matrix
 from .task6 import cfg_to_weak_normal_form, cfpq_with_hellings
 from .task4 import reachability_with_constraints
@@ -23,4 +24,7 @@ __all__ = [
     "cfg_to_rsm",
     "ebnf_to_rsm",
     "cfpq_with_gll",
+    "typing_program",
+    "exec_program",
+    "rsm_to_mat",
 ]
