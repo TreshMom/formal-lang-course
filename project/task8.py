@@ -6,7 +6,7 @@ from pyformlang.cfg import CFG, Epsilon
 from pyformlang.finite_automaton import EpsilonNFA, Symbol, State, TransitionFunction
 from pyformlang.regular_expression import Regex
 from pyformlang.rsa import RecursiveAutomaton, Box
-from scipy.sparse import dok_matrix, kron, eye
+from scipy.sparse import dok_matrix, kron, eye, csr_matrix
 
 from project.task2 import graph_to_nfa
 
@@ -199,3 +199,30 @@ def ebnf_to_rsm(ebnf: str) -> RecursiveAutomaton:
 
     start_nonterminal = Symbol("S")
     return RecursiveAutomaton(Ns, start_nonterminal, boxes)
+
+
+def rsm_to_mat(
+    rsm: RecursiveAutomaton,
+) -> tuple[dict[str, csr_matrix], int, set, set, set]:
+    n = sum([len(box.dfa.states) for box in rsm.boxes.values()])
+
+    rsm_state = set()
+    rsm_start = set()
+    rsm_final = set()
+    for sym, box in rsm.boxes.items():
+        rsm_state |= {(sym.value, state.value) for state in box.dfa.states}
+        rsm_start |= {(sym.value, state.value) for state in box.dfa.start_states}
+        rsm_final |= {(sym.value, state.value) for state in box.dfa.final_states}
+
+    rsm_matrix = {}
+    state_map = {state: i for i, state in enumerate(rsm_state)}
+    for sym, box in rsm.boxes.items():
+        for from_state, transitions in box.dfa.to_dict().items():
+            for symbol, to_state in transitions.items():
+                from_idx = state_map[(sym.value, from_state.value)]
+                to_idx = state_map[(sym.value, to_state.value)]
+                rsm_matrix.setdefault(symbol.value, csr_matrix((n, n), dtype=bool))[
+                    from_idx, to_idx
+                ] = True
+
+    return rsm_matrix, n, rsm_state, rsm_start, rsm_final

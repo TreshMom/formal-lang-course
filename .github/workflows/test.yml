@@ -21,7 +21,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Generate antlr4 dependencies
-      run: antlr4 -Dlanguage=Python3 -Xexact-output-dir project/lang.g4 -o project/lang
+      run: antlr4 -Dlanguage=Python3 -Xexact-output-dir -visitor project/lang.g4 -o project/lang
 
     - name: Run tests
       run: |
