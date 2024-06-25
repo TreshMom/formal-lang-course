@@ -4,10 +4,10 @@ from pyformlang.regular_expression import Regex
 from pyformlang.finite_automaton import EpsilonNFA
 from pyformlang.rsa import RecursiveAutomaton
 from project import automaton
-from project.lang import prog_to_tree
-from project.lang.languageLexer import languageLexer
-from project.lang.languageParser import languageParser
-from project.lang.languageVisitor import languageVisitor
+from project.task11 import prog_to_tree
+from project.lang.langLexer import langLexer
+from project.lang.langParser import langParser
+from project.lang.langVisitor import langVisitor
 
 
 from antlr4 import *
@@ -16,8 +16,8 @@ from antlr4.InputStream import InputStream
 from project.task8 import cfpq_with_tensor, ebnf_to_rsm
 
 
-def get_parser(program: str) -> languageParser:
-    return languageParser(CommonTokenStream(languageLexer(InputStream(program))))
+def get_parser(program: str) -> langParser:
+    return langParser(CommonTokenStream(langLexer(InputStream(program))))
 
 
 void = ("void", "empty expression")
@@ -84,7 +84,7 @@ def rsm_intersect(a, b):
     )
 
 
-class Visitor(languageVisitor):
+class Visitor(langVisitor):
 
     stdout = ""
     stderr = ""
@@ -122,8 +122,8 @@ class Visitor(languageVisitor):
     def __init__(self):
         pass
 
-    # Visit a parse tree produced by languageParser#prog.
-    def visitProg(self, ctx: languageParser.ProgContext):
+    # Visit a parse tree produced by langParser#prog.
+    def visitProg(self, ctx: langParser.ProgContext):
         for i in range(ctx.getChildCount()):
             result = ctx.getChild(i).accept(self)
 
@@ -139,18 +139,18 @@ class Visitor(languageVisitor):
             elif result[0] != "void":
                 self.stdout += print_object(result)
 
-    # Visit a parse tree produced by languageParser#stmt.
+    # Visit a parse tree produced by langParser#stmt.
 
-    def visitStmt(self, ctx: languageParser.StmtContext):
+    def visitStmt(self, ctx: langParser.StmtContext):
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by languageParser#declare.
-    def visitDeclare(self, ctx: languageParser.DeclareContext):
+    # Visit a parse tree produced by langParser#declare.
+    def visitDeclare(self, ctx: langParser.DeclareContext):
         self.vars[ctx.VAR().getText()] = ("graph", MultiDiGraph())
         return void
 
-    # Visit a parse tree produced by languageParser#bind.
-    def visitBind(self, ctx: languageParser.BindContext):
+    # Visit a parse tree produced by langParser#bind.
+    def visitBind(self, ctx: langParser.BindContext):
         result = ctx.expr().accept(self)
         if well_formed(result):
             self.vars[ctx.VAR().getText()] = result
@@ -172,8 +172,8 @@ class Visitor(languageVisitor):
                     + result[1],
                 )
 
-    # Visit a parse tree produced by languageParser#remove.
-    def visitRemove(self, ctx: languageParser.RemoveContext):
+    # Visit a parse tree produced by langParser#remove.
+    def visitRemove(self, ctx: langParser.RemoveContext):
         t = ctx.children[1].getText()
 
         graph_ = self.get_graph_var(ctx.VAR().getText())
@@ -223,8 +223,8 @@ class Visitor(languageVisitor):
 
         return ("error", "impossible parse error in remove")
 
-    # Visit a parse tree produced by languageParser#add.
-    def visitAdd(self, ctx: languageParser.AddContext):
+    # Visit a parse tree produced by langParser#add.
+    def visitAdd(self, ctx: langParser.AddContext):
         t = ctx.children[1].getText()
 
         graph_ = self.get_graph_var(ctx.VAR().getText())
@@ -260,36 +260,36 @@ class Visitor(languageVisitor):
 
         return ("error", "impossible parse error in add")
 
-    # Visit a parse tree produced by languageParser#Expr_num.
-    def visitExpr_num(self, ctx: languageParser.Expr_numContext):
+    # Visit a parse tree produced by langParser#Expr_num.
+    def visitExpr_num(self, ctx: langParser.Expr_numContext):
         return ("num", int(ctx.getText()))
 
-    # Visit a parse tree produced by languageParser#Expr_char.
-    def visitExpr_char(self, ctx: languageParser.Expr_charContext):
+    # Visit a parse tree produced by langParser#Expr_char.
+    def visitExpr_char(self, ctx: langParser.Expr_charContext):
         return ("char", ctx.getText()[1])
 
-    # Visit a parse tree produced by languageParser#Expr_var.
-    def visitExpr_var(self, ctx: languageParser.Expr_varContext):
+    # Visit a parse tree produced by langParser#Expr_var.
+    def visitExpr_var(self, ctx: langParser.Expr_varContext):
         return self.get_var(ctx.getText())
 
-    # Visit a parse tree produced by languageParser#Expr_edge_expr.
-    def visitExpr_edge_expr(self, ctx: languageParser.Expr_edge_exprContext):
+    # Visit a parse tree produced by langParser#Expr_edge_expr.
+    def visitExpr_edge_expr(self, ctx: langParser.Expr_edge_exprContext):
         return ctx.edge_expr().accept(self)
 
-    # Visit a parse tree produced by languageParser#Expr_set_expr.
-    def visitExpr_set_expr(self, ctx: languageParser.Expr_set_exprContext):
+    # Visit a parse tree produced by langParser#Expr_set_expr.
+    def visitExpr_set_expr(self, ctx: langParser.Expr_set_exprContext):
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by languageParser#Expr_regexp.
-    def visitExpr_regexp(self, ctx: languageParser.Expr_regexpContext):
+    # Visit a parse tree produced by langParser#Expr_regexp.
+    def visitExpr_regexp(self, ctx: langParser.Expr_regexpContext):
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by languageParser#Expr_select.
-    def visitExpr_select(self, ctx: languageParser.Expr_selectContext):
+    # Visit a parse tree produced by langParser#Expr_select.
+    def visitExpr_select(self, ctx: langParser.Expr_selectContext):
         return self.visitChildren(ctx)
 
-    # Visit a parse tree produced by languageParser#set_expr.
-    def visitSet_expr(self, ctx: languageParser.Set_exprContext):
+    # Visit a parse tree produced by langParser#set_expr.
+    def visitSet_expr(self, ctx: langParser.Set_exprContext):
         result = set()
         for x in ctx.expr():
             res = x.accept(self)
@@ -299,8 +299,8 @@ class Visitor(languageVisitor):
                 return ("error", "malformed set because of <- " + res)
         return ("set", result)
 
-    # Visit a parse tree produced by languageParser#edge_expr.
-    def visitEdge_expr(self, ctx: languageParser.Edge_exprContext):
+    # Visit a parse tree produced by langParser#edge_expr.
+    def visitEdge_expr(self, ctx: langParser.Edge_exprContext):
         u = ctx.expr(0).accept(self)
         tag = ctx.expr(1).accept(self)
         v = ctx.expr(2).accept(self)
@@ -313,13 +313,13 @@ class Visitor(languageVisitor):
                 "malformed edge - " + str(u) + " " + str(tag) + " " + str(v),
             )
 
-    # Visit a parse tree produced by languageParser#Regex_braces.
-    def visitRegex_braces(self, ctx: languageParser.Regex_bracesContext):
+    # Visit a parse tree produced by langParser#Regex_braces.
+    def visitRegex_braces(self, ctx: langParser.Regex_bracesContext):
         result = ctx.regexp().accept(self)
         return result
 
-    # Visit a parse tree produced by languageParser#Regex_dot.
-    def visitRegex_concat(self, ctx: languageParser.Regex_concatContext):
+    # Visit a parse tree produced by langParser#Regex_dot.
+    def visitRegex_concat(self, ctx: langParser.Regex_concatContext):
         left = ctx.regexp(0).accept(self)
         right = ctx.regexp(1).accept(self)
 
@@ -343,8 +343,8 @@ class Visitor(languageVisitor):
             "concat says malformed inner regex/rsm <- " + str(left) + " " + str(right),
         )
 
-    # Visit a parse tree produced by languageParser#Regex_range.
-    def visitRegex_repeat(self, ctx: languageParser.Regex_repeatContext):
+    # Visit a parse tree produced by langParser#Regex_range.
+    def visitRegex_repeat(self, ctx: langParser.Regex_repeatContext):
         left = ctx.regexp().accept(self)
         range_ = ctx.range_().accept(self)
         if left[0] != "error" and range_[0] != "error":
@@ -378,8 +378,8 @@ class Visitor(languageVisitor):
             + str(range_),
         )
 
-    # Visit a parse tree produced by languageParser#Regex_var.
-    def visitRegex_var(self, ctx: languageParser.Regex_varContext):
+    # Visit a parse tree produced by langParser#Regex_var.
+    def visitRegex_var(self, ctx: langParser.Regex_varContext):
         r = self.get_var(ctx.VAR().getText())
         if r[0] == "regex" or r[0] == "rsm":
             return r
@@ -387,8 +387,8 @@ class Visitor(languageVisitor):
             return ("regex", Regex(r[1]))
         return ("error", "var in regex must point to regex - " + ctx.VAR().getText())
 
-    # Visit a parse tree produced by languageParser#Regex_and.
-    def visitRegex_intersect(self, ctx: languageParser.Regex_intersectContext):
+    # Visit a parse tree produced by langParser#Regex_and.
+    def visitRegex_intersect(self, ctx: langParser.Regex_intersectContext):
         left = ctx.regexp(0).accept(self)
         right = ctx.regexp(1).accept(self)
         if left[0] != "error" and right[0] != "error":
@@ -413,8 +413,8 @@ class Visitor(languageVisitor):
             "intersect says malformed inner regex <- " + str(left) + " " + str(right),
         )
 
-    # Visit a parse tree produced by languageParser#Regex_or.
-    def visitRegex_union(self, ctx: languageParser.Regex_unionContext):
+    # Visit a parse tree produced by langParser#Regex_or.
+    def visitRegex_union(self, ctx: langParser.Regex_unionContext):
         left = ctx.regexp(0).accept(self)
         right = ctx.regexp(1).accept(self)
         if left[0] != "error" and right[0] != "error":
@@ -435,20 +435,20 @@ class Visitor(languageVisitor):
             "union says malformed inner regex <- " + str(left) + " " + str(right),
         )
 
-    # Visit a parse tree produced by languageParser#Regex_char.
-    def visitRegex_char(self, ctx: languageParser.Regex_charContext):
+    # Visit a parse tree produced by langParser#Regex_char.
+    def visitRegex_char(self, ctx: langParser.Regex_charContext):
         return ("regex", Regex(ctx.getText()[1]))
 
-    # Visit a parse tree produced by languageParser#range.
-    def visitRange(self, ctx: languageParser.RangeContext):
+    # Visit a parse tree produced by langParser#range.
+    def visitRange(self, ctx: langParser.RangeContext):
         from_ = int(ctx.NUM(0).getText())
         to_ = None
         if len(ctx.NUM()) == 2:
             to_ = int(ctx.NUM(1).getText())
         return ("range", (from_, to_))
 
-    # Visit a parse tree produced by languageParser#select.
-    def visitSelect(self, ctx: languageParser.SelectContext):
+    # Visit a parse tree produced by langParser#select.
+    def visitSelect(self, ctx: langParser.SelectContext):
         filters = []
         for filter in ctx.v_filter():
             f_ = filter.accept(self)
@@ -539,8 +539,8 @@ class Visitor(languageVisitor):
 
         return ("set", result)
 
-    # Visit a parse tree produced by languageParser#v_filter.
-    def visitV_filter(self, ctx: languageParser.V_filterContext):
+    # Visit a parse tree produced by langParser#v_filter.
+    def visitV_filter(self, ctx: langParser.V_filterContext):
         iterable = ctx.expr().accept(self)
         if iterable[0] == "set":
             return ("foreach", (ctx.VAR().getText(), iterable))

@@ -1,4 +1,5 @@
 from .task12 import typing_program, exec_program
+from task11 import prog_to_tree, nodes_count, tree_to_prog
 from .task9 import cfpq_with_gll
 from .task8 import cfpq_with_tensor, cfg_to_rsm, ebnf_to_rsm
 from .task7 import cfpq_with_matrix
@@ -25,5 +26,8 @@ __all__ = [
     "ebnf_to_rsm",
     "cfpq_with_gll",
     "typing_program",
-    "exec_program"
+    "exec_program",
+    "prog_to_tree",
+    "nodes_count",
+    "tree_to_prog",
 ]
