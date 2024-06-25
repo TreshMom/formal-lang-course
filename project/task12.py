@@ -23,6 +23,7 @@ def typing_program(program: str) -> bool:
         return False
 
 
+"""
 def exec_program(program: str) -> dict[str, set[tuple]]:
     input_stream = InputStream(program)
     lexer = langLexer(input_stream)
@@ -35,3 +36,4 @@ def exec_program(program: str) -> dict[str, set[tuple]]:
 
     interpreterVisitor = InterpreterVisitor(context)
     return interpreterVisitor.visit(tree)
+"""
