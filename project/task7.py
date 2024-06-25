@@ -53,7 +53,7 @@ def cfpq_with_matrix(
                 (p.body[0].to_text(), p.body[1].to_text())
             )
 
-    for i in range(graph.number_of_nodes() ** 2):
+    for j in range(graph.number_of_nodes() ** 2):
         for N, NN in N_to_NN.items():
             for Nl, Nr in NN:
                 M_new[N] += M[Nl] @ M[Nr]
